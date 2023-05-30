@@ -19,7 +19,7 @@ app.use(express.json());
 
 const {Schema} = mongoose;
 
-const AttendeeSchema = new Schema ({
+const AttendeeSchema = new Schema ({ 
   username: {
     type: String
   },
@@ -83,6 +83,7 @@ app.post('/events', async (req, res) => {
     body: {}
   }
   const {eventName} = req.body;
+  // need to update to be able to edit all fields
   try {
     const event = await new Event({eventName}).save()
     response.body = event
@@ -94,6 +95,144 @@ app.post('/events', async (req, res) => {
   }
 })
 
+app.get('/events', async (req, res) => {
+  const response = {
+    success: true,
+    body: {}
+  }
+  try {
+    const allEvents = await Event.find();
+    if(allEvents){
+      response.body = allEvents;
+      res.status(200).json(response);
+    } else {
+      response.success = false
+      response.body = {message: error}
+      res.status(404).json(response)
+    }
+  } catch (error) {
+    response.success = false
+    response.body={message: error}
+    res.status(500).json(response)
+  }
+})
+
+app.patch('/events/:eventId', async (req, res) => {
+  const { eventId } = req.params
+  const response = {
+    success: true,
+    body: {}
+  }
+  const {eventName} = req.body
+  // need to update to be able to edit all fields
+  try {
+    const eventToEdit = await Event.findById(eventId)
+    if(eventToEdit){
+      // console.log("event Id:", eventId)
+      // console.log("new event name:", eventName)
+      // console.log("event to edit:", eventToEdit)
+      const editEvent = await Event.findByIdAndUpdate(eventId, {eventName: eventName})
+      response.body = editEvent
+      res.status(200).json(response)
+    } else {
+      response.success = false
+      response.body = {message: "There is no event with that ID"}
+      res.status(400).json(response)
+    }
+
+  } catch (error) {
+    response.success = false
+    response.body = {message: error}
+    res.status(400).json(response)
+  }
+})
+
+app.delete('/events/:eventId', async (req, res) => {
+  const { eventId } = req.params
+  const response = {
+    success: true,
+    body: {}
+  }
+  try {
+    const eventToDelete = await Event.findById(eventId)
+    if(eventToDelete){
+      // console.log(eventToDelete)
+      const deleteEvent = eventToDelete.deleteOne()
+      // console.log("event deleted")
+      response.body = {message: "Event Deleted"}
+      res.status(200).json(response)
+    } else {
+      response.success = false
+      response.body = {message: "There is no event with that ID"}
+      res.status(400).json(response)
+    }
+
+  } catch (error) {
+    response.success = false
+    response.body = {message: error}
+    res.status(400).json(response)
+  }
+})
+
+app.patch('/events/:eventId/attendees', async (req, res) => {
+  const { eventId } = req.params
+  const response = {
+    success: true,
+    body: {}
+  }
+  const {eventAttendees} = req.body;
+  try {
+    const eventToEdit = await Event.findById(eventId)
+    if(eventToEdit){
+      // console.log("event Id:", eventId)
+      // console.log("new event name:", eventName)
+      // console.log("event to edit:", eventToEdit)
+      const editEvent = await Event.findByIdAndUpdate(eventId, {eventAttendees: eventAttendees})
+      response.body = editEvent
+      res.status(200).json(response)
+    } else {
+      response.success = false
+      response.body = {message: "There is no event with that ID"}
+      res.status(400).json(response)
+    }
+
+  } catch (error) {
+    response.success = false
+    response.body = {message: error}
+    res.status(400).json(response)
+  }
+})
+
+app.delete('/events/:eventId/attendees/:attendeeId', async (req, res) => {
+  const { eventId, attendeeId } = req.params
+  const response = {
+    success: true,
+    body: {}
+  }
+  try {
+    const eventToEdit = await Event.findById(eventId)
+    if(eventToEdit){
+      console.log(eventToEdit)
+      const attendees = eventToEdit.eventAttendees
+      // const attendeeToDelete = attendees.findById(attendeeId)
+      //NOT YET IDENTIFYING THE CORRECT ATTENDEE
+      console.log("attendee to delete:", attendeeToDelete)
+      // const deleteEvent = eventToDelete.deleteOne()
+      // console.log("event deleted")
+      // response.body = {message: "Event Deleted"}
+      res.status(200).json(response)
+    } else {
+      response.success = false
+      response.body = {message: "There is no event with that ID"}
+      res.status(400).json(response)
+    }
+
+  } catch (error) {
+    response.success = false
+    response.body = {message: error}
+    res.status(400).json(response)
+  }
+})
 
 
 // Start the server
