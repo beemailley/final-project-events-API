@@ -34,7 +34,8 @@ const EventSchema = new Schema ({
   eventName: {
     type: String,
     minLength: 5,
-    maxLength: 100
+    maxLength: 100,
+    default: "Event"
   },
   eventDate: {
     type: Date,
@@ -47,25 +48,24 @@ const EventSchema = new Schema ({
   eventLocation: {
     type: String,
     default: ""
+    // need to figure out if location data will be stored any differently than a string
   },
   eventCategory: {
     type: String,
-    enum: ["Women", "Children", "Pets", "Arts", "Crafts","Everybody"],
-    default: "Everybody"
+    enum: ["Category 1", "Category 2", "Category 3", "Category 4", "Category 5"],
+    default: "Category 1"
     // need to come from a specific list that matches the user schema
     // need to create interests/categories list
   },
   eventSummary: {
     type: String,
-    // minLength: 20,
+    minLength: 20,
     maxLength: 280,
-    default: ""
+    default: "This is an event for people to gather."
   },
   eventAttendees: {
     type: [AttendeeSchema],
     default: undefined
-    // need to figure out how to store arrays of objects
-    // https://mongoosejs.com/docs/schematypes.html#arrays
   }
 });
 
@@ -73,19 +73,18 @@ const Event = mongoose.model("Event", EventSchema)
 
 // Start defining your routes here
 app.get("/", (req, res) => {
-  res.send("Hello Technigo!");
-  // res.json(allEndpoints(app));
+  res.json(allEndpoints(app));
 });
 
+//post a new event
 app.post('/events', async (req, res) => {
   const response = {
     success: true,
     body: {}
   }
-  const {eventName} = req.body;
-  // need to update to be able to edit all fields
+  const {eventName, eventDate, eventLocation, eventCategory, eventSummary} = req.body;
   try {
-    const event = await new Event({eventName}).save()
+    const event = await new Event({eventName, eventDate, eventLocation, eventCategory, eventSummary}).save()
     response.body = event
     res.status(201).json(response)
   } catch (error) {
@@ -95,6 +94,7 @@ app.post('/events', async (req, res) => {
   }
 })
 
+//get a list of all events
 app.get('/events', async (req, res) => {
   const response = {
     success: true,
@@ -117,22 +117,24 @@ app.get('/events', async (req, res) => {
   }
 })
 
+//edit an existing event
 app.patch('/events/:eventId', async (req, res) => {
   const { eventId } = req.params
   const response = {
     success: true,
     body: {}
   }
-  const {eventName} = req.body
-  // need to update to be able to edit all fields
   try {
     const eventToEdit = await Event.findById(eventId)
     if(eventToEdit){
-      // console.log("event Id:", eventId)
-      // console.log("new event name:", eventName)
-      // console.log("event to edit:", eventToEdit)
-      const editEvent = await Event.findByIdAndUpdate(eventId, {eventName: eventName})
-      response.body = editEvent
+      eventToEdit.eventName = req.body.eventName || eventToEdit.eventName;
+      eventToEdit.eventDate = req.body.eventDate || eventToEdit.eventDate;
+      eventToEdit.eventLocation = req.body.eventLocation || eventToEdit.eventLocation;
+      eventToEdit.eventCategory = req.body.eventCategory || eventToEdit.eventCategory;
+      eventToEdit.eventSummary = req.body.eventSummary || eventToEdit.eventSummary;
+      
+      const updatedEvent = await eventToEdit.save()
+      response.body = updatedEvent
       res.status(200).json(response)
     } else {
       response.success = false
@@ -147,6 +149,7 @@ app.patch('/events/:eventId', async (req, res) => {
   }
 })
 
+//delete a single event
 app.delete('/events/:eventId', async (req, res) => {
   const { eventId } = req.params
   const response = {
@@ -156,9 +159,7 @@ app.delete('/events/:eventId', async (req, res) => {
   try {
     const eventToDelete = await Event.findById(eventId)
     if(eventToDelete){
-      // console.log(eventToDelete)
       const deleteEvent = eventToDelete.deleteOne()
-      // console.log("event deleted")
       response.body = {message: "Event Deleted"}
       res.status(200).json(response)
     } else {
@@ -174,6 +175,7 @@ app.delete('/events/:eventId', async (req, res) => {
   }
 })
 
+//add attendees to an event
 app.patch('/events/:eventId/attendees', async (req, res) => {
   const { eventId } = req.params
   const response = {
@@ -184,9 +186,6 @@ app.patch('/events/:eventId/attendees', async (req, res) => {
   try {
     const eventToEdit = await Event.findById(eventId)
     if(eventToEdit){
-      // console.log("event Id:", eventId)
-      // console.log("new event name:", eventName)
-      // console.log("event to edit:", eventToEdit)
       const editEvent = await Event.findByIdAndUpdate(eventId, {eventAttendees: eventAttendees})
       response.body = editEvent
       res.status(200).json(response)
@@ -203,6 +202,9 @@ app.patch('/events/:eventId/attendees', async (req, res) => {
   }
 })
 
+//delete an attendee from an event
+//NOT YET IDENTIFYING THE CORRECT ATTENDEE
+// https://mongoosejs.com/docs/subdocs.html
 app.delete('/events/:eventId/attendees/:attendeeId', async (req, res) => {
   const { eventId, attendeeId } = req.params
   const response = {
@@ -215,7 +217,6 @@ app.delete('/events/:eventId/attendees/:attendeeId', async (req, res) => {
       console.log(eventToEdit)
       const attendees = eventToEdit.eventAttendees
       // const attendeeToDelete = attendees.findById(attendeeId)
-      //NOT YET IDENTIFYING THE CORRECT ATTENDEE
       console.log("attendee to delete:", attendeeToDelete)
       // const deleteEvent = eventToDelete.deleteOne()
       // console.log("event deleted")
