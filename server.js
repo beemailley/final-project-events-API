@@ -17,38 +17,37 @@ const allEndpoints = require('express-list-endpoints');
 app.use(cors());
 app.use(express.json());
 
-const {Schema} = mongoose;
 
-const AttendeeSchema = new Schema ({ 
-  username: {
+const AttendeeSchema = new mongoose.Schema ({ 
+  attendeeName: {
     type: String
   },
-  userCountry: {
+  attendeeCountry: {
     type: String
   }
 })
 
 const Attendee = mongoose.model("Attendee", AttendeeSchema)
 
-const EventSchema = new Schema ({
+const EventSchema = new mongoose.Schema ({
   eventName: {
     type: String,
     minLength: 5,
     maxLength: 100,
     default: "Event"
   },
-  eventDate: {
+  eventDateAndTime: {
     type: Date,
     default: () => new Date ()
+    // will need to convert any inputs for date and time on frontend to a Date object
   }, 
-  // eventTime: {
-  //   type: String
-  //   // need to figure out how to store time in mongoose/JS
-  // }, 
-  eventLocation: {
+  eventVenue: {
     type: String,
     default: ""
-    // need to figure out if location data will be stored any differently than a string
+  },
+  eventAddress: {
+    type: String,
+    default: ""
   },
   eventCategory: {
     type: String,
@@ -78,37 +77,35 @@ app.get("/", (req, res) => {
 
 //post a new event
 app.post('/events', async (req, res) => {
-  const response = {
-    success: true,
-    body: {}
-  }
-  const {eventName, eventDate, eventLocation, eventCategory, eventSummary} = req.body;
+  const {eventName, eventDateAndTime, eventVenue, eventAddress, eventCategory, eventSummary} = req.body;
   try {
-    const event = await new Event({eventName, eventDate, eventLocation, eventCategory, eventSummary}).save()
-    response.body = event
-    res.status(201).json(response)
+    const event = await new Event({eventName, eventDateAndTime, eventVenue, eventAddress, eventCategory, eventSummary}).save()
+   res.status(201).json({
+    success: true,
+    response: event
+   })
   } catch (error) {
-    response.success = false
-    response.body = {message: error}
-    res.status(400).json(response)
+    res.status(400).json({
+      success: false,
+      response: {message: error}
+    })
   }
 })
 
 //get a list of all events
 app.get('/events', async (req, res) => {
-  const response = {
-    success: true,
-    body: {}
-  }
   try {
     const allEvents = await Event.find();
     if(allEvents){
-      response.body = allEvents;
-      res.status(200).json(response);
+      res.status(200).json({
+        success: true,
+        response: allEvents
+      });
     } else {
-      response.success = false
-      response.body = {message: error}
-      res.status(404).json(response)
+      res.status(404).json({
+        success: false,
+        response: {message: error}
+      })
     }
   } catch (error) {
     response.success = false
@@ -120,120 +117,124 @@ app.get('/events', async (req, res) => {
 //edit an existing event
 app.patch('/events/:eventId', async (req, res) => {
   const { eventId } = req.params
-  const response = {
-    success: true,
-    body: {}
-  }
   try {
     const eventToEdit = await Event.findById(eventId)
     if(eventToEdit){
       eventToEdit.eventName = req.body.eventName || eventToEdit.eventName;
-      eventToEdit.eventDate = req.body.eventDate || eventToEdit.eventDate;
-      eventToEdit.eventLocation = req.body.eventLocation || eventToEdit.eventLocation;
+      eventToEdit.eventDateAndTime = req.body.eventDateAndTime || eventToEdit.eventDateAndTime;
+      eventToEdit.eventVenue = req.body.eventVenue || eventToEdit.eventVenue;
+      eventToEdit.eventAddress = req.body.eventAddress|| eventToEdit.eventAddress;
       eventToEdit.eventCategory = req.body.eventCategory || eventToEdit.eventCategory;
       eventToEdit.eventSummary = req.body.eventSummary || eventToEdit.eventSummary;
-      
       const updatedEvent = await eventToEdit.save()
-      response.body = updatedEvent
-      res.status(200).json(response)
+      res.status(200).json({
+        success: true,
+        response: updatedEvent
+      })
     } else {
-      response.success = false
-      response.body = {message: "There is no event with that ID"}
-      res.status(400).json(response)
+      res.status(400).json({
+        success: false,
+        response: {message: "There is no event with that ID"}
+      })
     }
-
   } catch (error) {
-    response.success = false
-    response.body = {message: error}
-    res.status(400).json(response)
+    res.status(400).json({
+      success: false,
+      response: {message: error}
+    })
   }
 })
 
 //delete a single event
 app.delete('/events/:eventId', async (req, res) => {
   const { eventId } = req.params
-  const response = {
-    success: true,
-    body: {}
-  }
   try {
     const eventToDelete = await Event.findById(eventId)
     if(eventToDelete){
       const deleteEvent = eventToDelete.deleteOne()
-      response.body = {message: "Event Deleted"}
-      res.status(200).json(response)
+      res.status(200).json({
+        success: true,
+        response: {message: "Event Deleted"}
+      })
     } else {
-      response.success = false
-      response.body = {message: "There is no event with that ID"}
-      res.status(400).json(response)
+      res.status(400).json({
+        success: false,
+        response: {message: "There is no event with that ID"}
+      })
     }
-
   } catch (error) {
-    response.success = false
-    response.body = {message: error}
-    res.status(400).json(response)
+    res.status(400).json({
+      success: false,
+      response: {message: error}
+    })
   }
 })
 
 //add attendees to an event
-app.patch('/events/:eventId/attendees', async (req, res) => {
+app.post('/events/:eventId/attendees', async (req, res) => {
   const { eventId } = req.params
-  const response = {
-    success: true,
-    body: {}
-  }
-  const {eventAttendees} = req.body;
+  const {attendeeName, attendeeCountry} = req.body;
   try {
     const eventToEdit = await Event.findById(eventId)
     if(eventToEdit){
-      const editEvent = await Event.findByIdAndUpdate(eventId, {eventAttendees: eventAttendees})
-      response.body = editEvent
-      res.status(200).json(response)
+      const editEvent = await Event.updateOne(
+        {_id: eventId},
+        {
+          $push: {
+            eventAttendees: {
+              $each:[ {attendeeName: attendeeName, attendeeCountry: attendeeCountry}]
+            }
+        }}
+      )
+      res.status(200).json({
+        success: true,
+        response: {message: "Attendee added"}
+      })
     } else {
-      response.success = false
-      response.body = {message: "There is no event with that ID"}
-      res.status(400).json(response)
+      res.status(400).json({
+        success: false,
+        response: {message: "There is no event with that ID"}
+      })
     }
-
   } catch (error) {
-    response.success = false
-    response.body = {message: error}
-    res.status(400).json(response)
+    res.status(400).json({
+      success: false,
+      response: {message: error}
+    })
   }
 })
 
 //delete an attendee from an event
-//NOT YET IDENTIFYING THE CORRECT ATTENDEE
-// https://mongoosejs.com/docs/subdocs.html
 app.delete('/events/:eventId/attendees/:attendeeId', async (req, res) => {
   const { eventId, attendeeId } = req.params
-  const response = {
-    success: true,
-    body: {}
-  }
   try {
     const eventToEdit = await Event.findById(eventId)
     if(eventToEdit){
-      console.log(eventToEdit)
-      const attendees = eventToEdit.eventAttendees
-      // const attendeeToDelete = attendees.findById(attendeeId)
-      console.log("attendee to delete:", attendeeToDelete)
-      // const deleteEvent = eventToDelete.deleteOne()
-      // console.log("event deleted")
-      // response.body = {message: "Event Deleted"}
-      res.status(200).json(response)
+      const editEvent = await Event.updateOne(
+        {_id: eventId},
+        {
+          $pull: {
+            eventAttendees: {_id: attendeeId}
+        }}
+      )
+      res.status(200).json({
+        success: true,
+        response: {message: "Attendee removed"}
+      })
     } else {
-      response.success = false
-      response.body = {message: "There is no event with that ID"}
-      res.status(400).json(response)
+      res.status(400).json({
+        success: false,
+        response: {message: "There is no event or attendee with that ID"}
+      })
     }
-
   } catch (error) {
-    response.success = false
-    response.body = {message: error}
-    res.status(400).json(response)
+    res.status(400).json({
+      success: false,
+      response: {message: error}
+    })
   }
 })
+
 
 
 // Start the server
